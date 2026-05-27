@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Flip Tracker" />
+  <title>Flip Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --surface3: #2e2e2e;
+      --border: #2e2e2e;
+      --text: #f0ede8;
+      --muted: #888;
+      --green: #4ade80;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --blue: #60a5fa;
+      --radius: 14px;
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: env(safe-area-inset-top,44px) 0 env(safe-area-inset-bottom,34px); }
+    .app { max-width: 430px; margin: 0 auto; padding: 0 16px; }
+    header { display: flex; align-items: baseline; justify-content: space-between; padding: 24px 0 20px; }
+    header h1 { font-family: var(--mono); font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
+    header span { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .stat.wide { grid-column: 1/-1; }
+    .stat-label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
+    .stat-value { font-family: var(--mono); font-size: 22px; font-weight: 500; }
+    .stat-value.pos { color: var(--green); }
+    .stat-value.neg { color: var(--red); }
+    .stat-value.neutral { color: var(--text); }
+    .stat-value.amber { color: var(--amber); }
+
+    /* FORM */
+    .form-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+    .form-label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px; }
+    .field { margin-bottom: 10px; }
+    .field label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+    input[type="text"], input[type="number"] {
+      width: 100%; background: var(--surface2); border: 0.5px solid var(--border);
+      border-radius: 10px; color: var(--text); font-family: var(--sans); font-size: 16px;
+      padding: 12px 14px; outline: none; -webkit-appearance: none;
+    }
+    input:focus { border-color: #555; }
+    input::placeholder { color: #444; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .toggle-label { font-size: 13px; color: var(--muted); }
+    .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: var(--surface3); border-radius: 13px; transition: 0.2s; cursor: pointer; }
+    .slider:before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: 0.2s; }
+    input:checked + .slider { background: var(--amber); }
+    input:checked + .slider:before { background: #fff; transform: translateX(18px); }
+
+    .add-btn { width: 100%; background: var(--text); color: var(--bg); border: none; border-radius: 10px; font-family: var(--sans); font-size: 15px; font-weight: 500; padding: 14px; cursor: pointer; transition: opacity 0.15s; }
+    .add-btn:active { opacity: 0.7; }
+
+    /* LIST */
+    .list-header { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 10px; padding: 0 2px; }
+    .entries { display: flex; flex-direction: column; gap: 10px; padding-bottom: 40px; }
+
+    /* ENTRY CARD */
+    .entry { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .entry-main { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+    .entry-info { flex: 1; min-width: 0; }
+    .entry-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+    .entry-sub { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .entry-right { text-align: right; flex-shrink: 0; }
+    .profit-value { font-family: var(--mono); font-size: 15px; font-weight: 500; }
+    .profit-value.pos { color: var(--green); }
+    .profit-value.neg { color: var(--red); }
+    .profit-value.pending { color: var(--amber); font-size: 12px; }
+    .profit-value.blue { color: var(--blue); font-size: 12px; }
+    .del-btn { background: none; border: none; color: #444; font-size: 22px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+    .del-btn:active { color: var(--red); }
+
+    /* EXPAND */
+    .expand-btn { background: none; border: none; border-top: 0.5px solid var(--border); width: 100%; padding: 9px; color: var(--muted); font-size: 12px; cursor: pointer; font-family: var(--sans); display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .expand-btn:active { background: var(--surface2); }
+    .entry-expanded { display: none; border-top: 0.5px solid var(--border); padding: 14px 16px; background: var(--surface2); }
+    .entry-expanded.open { display: block; }
+
+    /* VK nachtragen (single) */
+    .inline-form { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+    .inline-form input { flex: 1; font-size: 15px; padding: 10px 12px; }
+    .inline-btn { background: var(--text); color: var(--bg); border: none; border-radius: 8px; padding: 10px 14px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    .inline-btn:active { opacity: 0.7; }
+    .inline-btn.danger { background: none; border: 0.5px solid var(--border); color: var(--muted); }
+
+    /* PARTIAL SALES */
+    .partial-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+    .partial-list { margin-bottom: 10px; }
+    .partial-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+    .partial-item:last-child { border-bottom: none; }
+    .partial-name { font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 8px; }
+    .partial-price { font-family: var(--mono); font-size: 13px; color: var(--green); margin-right: 10px; flex-shrink: 0; }
+    .partial-del { background: none; border: none; color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
+    .partial-del:active { color: var(--red); }
+    .partial-add { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 10px; align-items: center; }
+    .partial-add input { font-size: 14px; padding: 9px 12px; }
+    .partial-summary { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 8px 0; border-top: 0.5px solid var(--border); margin-bottom: 10px; }
+    .partial-summary span { color: var(--text); }
+
+    .close-btn { background: none; border: 0.5px solid var(--border); border-radius: 8px; color: var(--amber); padding: 10px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; margin-top: 4px; }
+    .close-btn:active { opacity: 0.7; }
+    .badge-closed { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: #1a2a1a; color: var(--green); border: 0.5px solid var(--green); margin-left: 6px; vertical-align: middle; }
+    .badge-open { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: #2a2a1a; color: var(--amber); border: 0.5px solid var(--amber); margin-left: 6px; vertical-align: middle; }
+
+    .empty { text-align: center; padding: 40px 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .empty span { display: block; font-size: 28px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>flip tracker</h1>
+    <span id="count-label">0 trades</span>
+  </header>
+
+  <div class="stats">
+    <div class="stat wide">
+      <div class="stat-label">Gesamtgewinn</div>
+      <div class="stat-value neutral" id="s-gewinn">0,00 €</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Einnahmen</div>
+      <div class="stat-value neutral" id="s-ein">0,00 €</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Ausgaben</div>
+      <div class="stat-value neutral" id="s-aus">0,00 €</div>
+    </div>
+    <div class="stat wide">
+      <div class="stat-label">Warenwert (Bestand)</div>
+      <div class="stat-value amber" id="s-ware">0,00 €</div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-label">Neuer Eintrag</div>
+    <div class="field">
+      <label>Artikel</label>
+      <input type="text" id="f-name" placeholder="z.B. iPhone 13, PS5 Paket, ..." />
+    </div>
+    <div class="field">
+      <label>Einkaufspreis (€)</label>
+      <input type="number" id="f-ek" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+    </div>
+    <div class="toggle-row">
+      <label class="toggle">
+        <input type="checkbox" id="f-paket" onchange="togglePaketForm()" />
+        <span class="slider"></span>
+      </label>
+      <span class="toggle-label">Paket-Modus (mehrere Teilverkäufe)</span>
+    </div>
+    <div id="f-vk-wrap" class="field">
+      <label>Verkaufspreis (€) – optional</label>
+      <input type="number" id="f-vk" placeholder="leer = noch nicht verkauft" min="0" step="0.01" inputmode="decimal" />
+    </div>
+    <button class="add-btn" onclick="addEntry()">Hinzufügen</button>
+  </div>
+
+  <div class="list-header" id="list-header" style="display:none">Alle Einträge</div>
+  <div class="entries" id="entries">
+    <div class="empty"><span>📦</span>Noch keine Trades.<br>Füge deinen ersten Artikel hinzu!</div>
+  </div>
+</div>
+
+<script>
+let entries = [];
+
+function load() {
+  try { const d = localStorage.getItem('flip_v3'); if (d) entries = JSON.parse(d); } catch(e) { entries = []; }
+  render();
+}
+function save() {
+  try { localStorage.setItem('flip_v3', JSON.stringify(entries)); } catch(e) {}
+}
+function fmt(n) {
+  return n.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+function togglePaketForm() {
+  const isPaket = document.getElementById('f-paket').checked;
+  document.getElementById('f-vk-wrap').style.display = isPaket ? 'none' : 'block';
+}
+function addEntry() {
+  const name = document.getElementById('f-name').value.trim();
+  const ek = parseFloat(document.getElementById('f-ek').value.replace(',','.'));
+  const isPaket = document.getElementById('f-paket').checked;
+  const vkRaw = document.getElementById('f-vk').value.trim();
+  const vk = (!isPaket && vkRaw !== '') ? parseFloat(vkRaw.replace(',','.')) : null;
+  if (!name) { alert('Bitte Artikelname eingeben.'); return; }
+  if (isNaN(ek) || ek < 0) { alert('Bitte gültigen Einkaufspreis eingeben.'); return; }
+  if (vk !== null && (isNaN(vk) || vk < 0)) { alert('Ungültiger Verkaufspreis.'); return; }
+  entries.unshift({ id: Date.now(), name, ek, vk, paket: isPaket, sales: [], closed: false });
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-ek').value = '';
+  document.getElementById('f-vk').value = '';
+  document.getElementById('f-paket').checked = false;
+  document.getElementById('f-vk-wrap').style.display = 'block';
+  save(); render();
+}
+function deleteEntry(id) {
+  if (!confirm('Eintrag löschen?')) return;
+  entries = entries.filter(e => e.id !== id);
+  save(); render();
+}
+function saveVK(id) {
+  const input = document.getElementById('vk-input-' + id);
+  const vk = parseFloat(input.value.replace(',','.'));
+  if (isNaN(vk) || vk < 0) { alert('Ungültiger Verkaufspreis.'); return; }
+  const e = entries.find(x => x.id === id);
+  if (e) { e.vk = vk; }
+  save(); render();
+}
+function addSale(id) {
+  const nameIn = document.getElementById('sale-name-' + id);
+  const priceIn = document.getElementById('sale-price-' + id);
+  const sname = nameIn.value.trim();
+  const sprice = parseFloat(priceIn.value.replace(',','.'));
+  if (!sname) { alert('Bitte Artikelname eingeben.'); return; }
+  if (isNaN(sprice) || sprice < 0) { alert('Ungültiger Preis.'); return; }
+  const e = entries.find(x => x.id === id);
+  if (e) { e.sales.push({ id: Date.now(), name: sname, price: sprice }); }
+  nameIn.value = ''; priceIn.value = '';
+  save(); render();
+  // reopen expand
+  setTimeout(() => {
+    const el = document.getElementById('exp-' + id);
+    if (el) el.classList.add('open');
+  }, 10);
+}
+function deleteSale(entryId, saleId) {
+  const e = entries.find(x => x.id === entryId);
+  if (e) e.sales = e.sales.filter(s => s.id !== saleId);
+  save(); render();
+  setTimeout(() => {
+    const el = document.getElementById('exp-' + entryId);
+    if (el) el.classList.add('open');
+  }, 10);
+}
+function closePackage(id) {
+  if (!confirm('Paket als abgeschlossen markieren? Der Gewinn wird jetzt berechnet.')) return;
+  const e = entries.find(x => x.id === id);
+  if (e) { e.closed = true; }
+  save(); render();
+}
+function toggleExpand(id) {
+  const el = document.getElementById('exp-' + id);
+  if (el) el.classList.toggle('open');
+}
+function render() {
+  // stats
+  let totalProfit = 0, totalEin = 0, totalAus = 0, warenwert = 0;
+  entries.forEach(e => {
+    if (e.paket) {
+      const salesTotal = (e.sales || []).reduce((s,x) => s + x.price, 0);
+      if (e.closed) {
+        totalProfit += salesTotal - e.ek;
+        totalEin += salesTotal;
+        totalAus += e.ek;
+      } else {
+        warenwert += e.ek;
+      }
+    } else {
+      if (e.vk !== null) {
+        totalProfit += e.vk - e.ek;
+        totalEin += e.vk;
+        totalAus += e.ek;
+      } else {
+        warenwert += e.ek;
+      }
+    }
+  });
+  const gEl = document.getElementById('s-gewinn');
+  gEl.textContent = (totalProfit >= 0 ? '+' : '') + fmt(totalProfit);
+  gEl.className = 'stat-value ' + (totalProfit > 0 ? 'pos' : totalProfit < 0 ? 'neg' : 'neutral');
+  document.getElementById('s-ein').textContent = fmt(totalEin);
+  document.getElementById('s-aus').textContent = fmt(totalAus);
+  document.getElementById('s-ware').textContent = fmt(warenwert);
+  document.getElementById('count-label').textContent = entries.length === 1 ? '1 trade' : entries.length + ' trades';
+
+  const container = document.getElementById('entries');
+  const lh = document.getElementById('list-header');
+  if (!entries.length) {
+    lh.style.display = 'none';
+    container.innerHTML = '<div class="empty"><span>📦</span>Noch keine Trades.<br>Füge deinen ersten Artikel hinzu!</div>';
+    return;
+  }
+  lh.style.display = 'block';
+
+  container.innerHTML = entries.map(e => {
+    let profitStr = '';
+    let subStr = fmt(e.ek) + ' EK';
+
+    if (e.paket) {
+      const salesTotal = (e.sales||[]).reduce((s,x) => s+x.price, 0);
+      const count = (e.sales||[]).length;
+      if (e.closed) {
+        const profit = salesTotal - e.ek;
+        profitStr = `<div class="profit-value ${profit>=0?'pos':'neg'}">${profit>=0?'+':''}${fmt(profit)}</div>`;
+        subStr = `${fmt(e.ek)} EK · ${count} Verkäufe`;
+      } else {
+        profitStr = `<div class="profit-value blue">Paket offen</div><div style="font-family:var(--mono);font-size:11px;color:var(--muted)">${fmt(salesTotal)} bisher</div>`;
+        subStr = `${fmt(e.ek)} EK · ${count} Verkäufe`;
+      }
+      // partial sales list
+      const salesHtml = (e.sales||[]).length ? `
+        <div class="partial-title">Einzelverkäufe</div>
+        <div class="partial-list">${(e.sales||[]).map(s => `
+          <div class="partial-item">
+            <span class="partial-name">${s.name}</span>
+            <span class="partial-price">+${fmt(s.price)}</span>
+            <button class="partial-del" onclick="deleteSale(${e.id},${s.id})">×</button>
+          </div>`).join('')}
+        </div>
+        <div class="partial-summary">
+          <span>Eingenommen</span><span>${fmt((e.sales||[]).reduce((s,x)=>s+x.price,0))}</span>
+        </div>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Noch keine Verkäufe eingetragen.</div>';
+
+      const expandedHtml = `
+        <div class="entry-expanded" id="exp-${e.id}">
+          ${salesHtml}
+          ${!e.closed ? `
+          <div class="partial-add">
+            <input type="text" id="sale-name-${e.id}" placeholder="Artikel (z.B. FIFA 24)" />
+            <input type="number" id="sale-price-${e.id}" placeholder="€" min="0" step="0.01" inputmode="decimal" style="width:80px" />
+            <button class="inline-btn" onclick="addSale(${e.id})">+</button>
+          </div>
+          <button class="close-btn" onclick="closePackage(${e.id})">✓ Paket abschließen</button>` : ''}
+        </div>`;
+
+      return `<div class="entry">
+        <div class="entry-main">
+          <div class="entry-info">
+            <div class="entry-name">${e.name}<span class="${e.closed?'badge-closed':'badge-open'}">${e.closed?'fertig':'offen'}</span></div>
+            <div class="entry-sub">${subStr}</div>
+          </div>
+          <div class="entry-right">${profitStr}</div>
+          <button class="del-btn" onclick="deleteEntry(${e.id})">×</button>
+        </div>
+        <button class="expand-btn" onclick="toggleExpand(${e.id})">▾ Details</button>
+        ${expandedHtml}
+      </div>`;
+
+    } else {
+      // normal entry
+      if (e.vk !== null) {
+        const profit = e.vk - e.ek;
+        profitStr = `<div class="profit-value ${profit>=0?'pos':'neg'}">${profit>=0?'+':''}${fmt(profit)}</div>`;
+        subStr = `${fmt(e.ek)} → ${fmt(e.vk)}`;
+      } else {
+        profitStr = `<div class="profit-value pending">im Bestand</div>`;
+      }
+      const expandedHtml = e.vk === null ? `
+        <div class="entry-expanded" id="exp-${e.id}">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Verkaufspreis nachtragen</div>
+          <div class="inline-form">
+            <input type="number" id="vk-input-${e.id}" placeholder="Verkaufspreis (€)" min="0" step="0.01" inputmode="decimal" />
+            <button class="inline-btn" onclick="saveVK(${e.id})">Speichern</button>
+          </div>
+        </div>` : '';
+
+      return `<div class="entry">
+        <div class="entry-main">
+          <div class="entry-info">
+            <div class="entry-name">${e.name}</div>
+            <div class="entry-sub">${subStr}</div>
+          </div>
+          <div class="entry-right">${profitStr}</div>
+          <button class="del-btn" onclick="deleteEntry(${e.id})">×</button>
+        </div>
+        ${e.vk === null ? `<button class="expand-btn" onclick="toggleExpand(${e.id})">▾ VK nachtragen</button>${expandedHtml}` : ''}
+      </div>`;
+    }
+  }).join('');
+}
+
+load();
+</script>
+</body>
+</html>
